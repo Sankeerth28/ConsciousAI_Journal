@@ -1,4 +1,5 @@
-# 🧠 ConsciousAI Journal
+## 🧠 ConsciousAI Journal  
+Live Demo: https://huggingface.co/spaces/Sankeerth004/conscious-ai-journal
 
 ConsciousAI is a smart journaling application designed to help you explore your thoughts and feelings. It uses AI to provide empathetic and insightful responses, analyze emotional trends, and help you gain a deeper understanding of your inner world. It's a private, non-judgmental space for self-reflection and growth.
 
