@@ -19,6 +19,7 @@ from app.models.feedback import Feedback  # noqa: F401
 from app.models.journal import JournalEntry  # noqa: F401
 from app.models.memory import Memory, MemoryEmbedding  # noqa: F401
 from app.models.settings import UserSettings  # noqa: F401
+from app.models.user import User  # noqa: F401
 
 
 def pytest_configure(config: pytest.Config) -> None:
