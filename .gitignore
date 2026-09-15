@@ -1,0 +1,115 @@
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!frontend/.env.example
+*.pem
+*.key
+*.cert
+secrets/
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ===========================
+# Virtual environments
+# ===========================
+.venv/
+venv/
+env/
+ENV/
+
+# ===========================
+# Testing & Linting
+# ===========================
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# ===========================
+# IDE & Editor
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ===========================
+# OS files
+# ===========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ===========================
+# Data & databases (SENSITIVE)
+# ===========================
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+journal_log.csv
+*.csv
+!tests/**/*.csv
+
+# ===========================
+# AI model caches & indexes
+# ===========================
+conscious_memory/
+*.faiss
+*.pkl
+models_cache/
+.cache/
+
+# ===========================
+# Logs
+# ===========================
+logs/
+*.log
+
+# ===========================
+# Frontend
+# ===========================
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.vite/
+
+# ===========================
+# Docker & Database local data
+# ===========================
+docker-compose.override.yml
+postgres_data/
+staging_pgdata/
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# ===========================
+# Misc
+# ===========================
+*.bak
+*.tmp
+*.temp

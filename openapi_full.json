@@ -1,0 +1,1795 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ConsciousAI Journal",
+    "description": "AI-powered self-reflection journaling application",
+    "version": "2.0.0a1"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "description": "Check that the service is alive (liveness probe).\n\nReturns a simple status confirming the process is running.\nThis endpoint does not query external dependencies (PostgreSQL, Redis, AI).",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness Check",
+        "description": "Check that application dependencies are healthy and accepting traffic (readiness probe).\n\nProbes:\n1. Database: verifies engine connectivity via SELECT 1 with 2.0s timeout.\n2. Redis: verifies connectivity via PING if REDIS_URL is configured with 2.0s timeout.\n\nReturns HTTP 200 when all required dependencies are healthy, or HTTP 503\nwith sanitized diagnostic details if any dependency fails.",
+        "operationId": "readiness_check_ready_get",
+        "responses": {
+          "200": {
+            "description": "All dependencies healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "One or more critical dependencies unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "description": "Check that the service is alive (liveness probe).\n\nReturns a simple status confirming the process is running.\nThis endpoint does not query external dependencies (PostgreSQL, Redis, AI).",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness Check",
+        "description": "Check that application dependencies are healthy and accepting traffic (readiness probe).\n\nProbes:\n1. Database: verifies engine connectivity via SELECT 1 with 2.0s timeout.\n2. Redis: verifies connectivity via PING if REDIS_URL is configured with 2.0s timeout.\n\nReturns HTTP 200 when all required dependencies are healthy, or HTTP 503\nwith sanitized diagnostic details if any dependency fails.",
+        "operationId": "readiness_check_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "description": "All dependencies healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "One or more critical dependencies unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Register a new user account",
+        "description": "Register a new user with email and secure password hashing.\n\nEnforces:\n- Email uniqueness (HTTP 409 on duplicate, with DB race-condition safety)\n- Normalized email format (lowercased, trimmed)\n- Salted bcrypt password hashing (never stores plaintext)",
+        "operationId": "register_user_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Authenticate and receive a JWT access token",
+        "description": "Authenticate user credentials and issue a signed JWT access token.\n\nEnforces:\n- Constant-time verification on unknown emails to prevent timing enumeration\n- Active account check\n- Cryptographic HS256 JWT access token generation",
+        "operationId": "login_user_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Retrieve current authenticated user identity",
+        "description": "Return profile details for the currently authenticated principal.",
+        "operationId": "get_current_user_profile_api_v1_auth_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals": {
+      "post": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Create a new journal entry with AI reflection and safety checks",
+        "description": "Create a new journal entry adhering to strict safety-first order.\n\nSafety Boundary:\n- If input contains crisis ideation or self-harm, pipeline halts immediately.\n- Zero persistence occurs; entry is NOT saved to the database.\n- Safe crisis envelope and regional helplines are returned immediately.\n- If safe, entry is persisted along with AI reflection and classifications.",
+        "operationId": "create_journal_entry_api_v1_journals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JournalEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "List user's journal entries with filtering and deterministic pagination",
+        "description": "Retrieve paginated journal entries for the current user.",
+        "operationId": "list_journal_entries_api_v1_journals_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Offset number of records",
+              "default": 0,
+              "title": "Skip"
+            },
+            "description": "Offset number of records"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size limit",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Page size limit"
+          },
+          {
+            "name": "emotion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by top emotion",
+              "title": "Emotion"
+            },
+            "description": "Filter by top emotion"
+          },
+          {
+            "name": "value_theme",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by top value theme",
+              "title": "Value Theme"
+            },
+            "description": "Filter by top value theme"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by tag",
+              "title": "Tag"
+            },
+            "description": "Filter by tag"
+          },
+          {
+            "name": "is_private",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by privacy visibility",
+              "title": "Is Private"
+            },
+            "description": "Filter by privacy visibility"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive start datetime",
+              "title": "Start Date"
+            },
+            "description": "Inclusive start datetime"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive end datetime",
+              "title": "End Date"
+            },
+            "description": "Inclusive end datetime"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Substring search query",
+              "title": "Search"
+            },
+            "description": "Substring search query"
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/export": {
+      "get": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Export user's journal entries in CSV or JSON format",
+        "description": "Export the authenticated user's non-deleted journal entries.",
+        "operationId": "export_journal_entries_api_v1_journals_export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/JournalExportFormat",
+              "description": "Target export format (csv or json).",
+              "default": "json"
+            },
+            "description": "Target export format (csv or json)."
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive start datetime",
+              "title": "Start Date"
+            },
+            "description": "Inclusive start datetime"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive end datetime",
+              "title": "End Date"
+            },
+            "description": "Inclusive end datetime"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by tag",
+              "title": "Tag"
+            },
+            "description": "Filter by tag"
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{entry_id}": {
+      "get": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Get a single journal entry by ID",
+        "description": "Fetch a single journal entry owned by the current user.",
+        "operationId": "get_journal_entry_api_v1_journals__entry_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Update mutable fields of a journal entry",
+        "description": "Update mutable attributes of an existing entry owned by current user.",
+        "operationId": "update_journal_entry_api_v1_journals__entry_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JournalEntryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Delete a journal entry (soft delete by default, permanent optional)",
+        "description": "Delete a journal entry owned by the current user.",
+        "operationId": "delete_journal_entry_api_v1_journals__entry_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "permanent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to permanently remove record",
+              "default": false,
+              "title": "Permanent"
+            },
+            "description": "Whether to permanently remove record"
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Journal Entry Api V1 Journals  Entry Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{entry_id}/restore": {
+      "post": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Restore a soft-deleted journal entry",
+        "description": "Restore a soft-deleted journal entry owned by the current user.",
+        "operationId": "restore_journal_entry_api_v1_journals__entry_id__restore_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{entry_id}/feedback": {
+      "post": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "Submit user feedback on an AI reflection",
+        "description": "Submit user feedback for an existing, non-deleted entry owned by the user.",
+        "operationId": "submit_feedback_api_v1_journals__entry_id__feedback_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "journals"
+        ],
+        "summary": "List feedback history for a journal entry",
+        "description": "Retrieve all feedback records for an entry owned by the current user.",
+        "operationId": "list_entry_feedback_api_v1_journals__entry_id__feedback_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Development-only tenant identifier (ignored in production mode).",
+              "title": "X-User-Id"
+            },
+            "description": "Development-only tenant identifier (ignored in production mode)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeedbackRead"
+                  },
+                  "title": "Response List Entry Feedback Api V1 Journals  Entry Id  Feedback Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FeedbackCreate": {
+        "properties": {
+          "feedback_type": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Feedback Type",
+            "description": "Type of feedback (e.g. 'Insightful', 'Helpful', 'Irrelevant')."
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment",
+            "description": "Optional qualitative user commentary."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "feedback_type"
+        ],
+        "title": "FeedbackCreate",
+        "description": "Payload for submitting feedback on a journal entry's AI response."
+      },
+      "FeedbackRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "journal_entry_id": {
+            "type": "integer",
+            "title": "Journal Entry Id"
+          },
+          "feedback_type": {
+            "type": "string",
+            "title": "Feedback Type"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "journal_entry_id",
+          "feedback_type",
+          "created_at"
+        ],
+        "title": "FeedbackRead",
+        "description": "Public read model for feedback records."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "HealthResponse",
+        "description": "Response schema for the health endpoint."
+      },
+      "JournalEntryCreate": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Raw journal reflection text."
+          },
+          "mood_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood Score",
+            "description": "Optional subjective mood score between 1.0 and 10.0."
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Optional thematic or categorical tags."
+          },
+          "persona": {
+            "type": "string",
+            "title": "Persona",
+            "description": "Companion persona style ('Supportive', 'Coach', 'Therapist-Style Reflection', 'Neutral').",
+            "default": "Supportive"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region",
+            "description": "User region for crisis resource routing ('US', 'CA', 'GB', 'AU', 'IN', 'GLOBAL').",
+            "default": "GLOBAL"
+          },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private",
+            "description": "Privacy visibility flag for the entry.",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "JournalEntryCreate",
+        "description": "Payload for creating a new journal entry."
+      },
+      "JournalEntryCreateResponse": {
+        "properties": {
+          "entry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JournalEntryRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The persisted journal entry record, or None if halted by safety boundaries."
+          },
+          "reflection": {
+            "$ref": "#/components/schemas/ReflectionResult",
+            "description": "Synthesized AI reflection or safe crisis response envelope."
+          },
+          "input_safety": {
+            "$ref": "#/components/schemas/SafetyCheckResult",
+            "description": "Input safety classification and crisis resource routing metadata."
+          },
+          "output_safety": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputSafetyCheckResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Output safety validation results."
+          }
+        },
+        "type": "object",
+        "required": [
+          "reflection",
+          "input_safety"
+        ],
+        "title": "JournalEntryCreateResponse",
+        "description": "Response returned when a journal entry is submitted.\n\nFor safe input: includes the persisted entry and reflection results.\nFor unsafe input: entry is None (zero persistence) and crisis guidance is returned."
+      },
+      "JournalEntryRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "mood_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood Score"
+          },
+          "top_emotion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Emotion"
+          },
+          "top_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Value"
+          },
+          "detected_emotions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Detected Emotions"
+          },
+          "detected_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Detected Values"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "ai_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Response"
+          },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JournalEntryRead",
+        "description": "Public read model for a journal entry."
+      },
+      "JournalEntryUpdate": {
+        "properties": {
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Updated list of tags."
+          },
+          "mood_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood Score",
+            "description": "Updated subjective mood score between 1.0 and 10.0."
+          },
+          "is_private": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Private",
+            "description": "Updated privacy visibility flag."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "JournalEntryUpdate",
+        "description": "Payload for updating mutable fields of an existing journal entry."
+      },
+      "JournalExportFormat": {
+        "type": "string",
+        "enum": [
+          "csv",
+          "json"
+        ],
+        "title": "JournalExportFormat",
+        "description": "Supported formats for journal data export."
+      },
+      "JournalListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JournalEntryRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Skip"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "skip",
+          "limit",
+          "has_more"
+        ],
+        "title": "JournalListResponse",
+        "description": "Paginated collection of journal entries."
+      },
+      "OutputSafetyCheckResult": {
+        "properties": {
+          "is_safe": {
+            "type": "boolean",
+            "title": "Is Safe"
+          },
+          "violation_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Violation Type"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_safe"
+        ],
+        "title": "OutputSafetyCheckResult",
+        "description": "Result from output safety validation."
+      },
+      "PersonaEnum": {
+        "type": "string",
+        "enum": [
+          "Supportive",
+          "Coach",
+          "Therapist-Style Reflection",
+          "Neutral"
+        ],
+        "title": "PersonaEnum",
+        "description": "Supported reflective journal personas."
+      },
+      "ReadyResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "redis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ReadyResponse",
+        "description": "Response schema for the readiness endpoint."
+      },
+      "ReflectionResult": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response"
+          },
+          "persona": {
+            "$ref": "#/components/schemas/PersonaEnum"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "safety_flag": {
+            "type": "boolean",
+            "title": "Safety Flag",
+            "default": false
+          },
+          "fallback_used": {
+            "type": "boolean",
+            "title": "Fallback Used",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "response",
+          "persona",
+          "model_name"
+        ],
+        "title": "ReflectionResult",
+        "description": "Structured output from the reflection engine."
+      },
+      "SafetyCheckResult": {
+        "properties": {
+          "is_safe": {
+            "type": "boolean",
+            "title": "Is Safe"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "crisis_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crisis Response"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_safe"
+        ],
+        "title": "SafetyCheckResult",
+        "description": "Result from input safety boundary evaluation."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Signed cryptographic JWT access token."
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "Token authorization type.",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Token lifespan in seconds."
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in"
+        ],
+        "title": "TokenResponse",
+        "description": "Bearer access token response envelope."
+      },
+      "UserLogin": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "User's registered email address."
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "User's plaintext password."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserLogin",
+        "description": "Payload for authenticating and obtaining an access token."
+      },
+      "UserRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "is_active",
+          "created_at"
+        ],
+        "title": "UserRead",
+        "description": "Public read model for user identity without sensitive credentials."
+      },
+      "UserRegister": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "User's primary email address."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Password",
+            "description": "Plaintext account password (min 8 chars, max 72 bytes)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserRegister",
+        "description": "Payload for registering a new user account."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
