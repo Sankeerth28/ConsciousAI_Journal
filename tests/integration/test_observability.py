@@ -4,31 +4,48 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
+from app.api.deps import get_db
 from app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture(name="api_client")
+def api_client_fixture(session: Session):
+    """Provide a TestClient with database session overridden by test session."""
+
+    def _override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
 
 
 class TestObservabilityMiddleware:
     """Test suite for RequestLoggingMiddleware, X-Request-ID, and log sanitization."""
 
-    def test_request_id_generated_automatically(self):
+    def test_request_id_generated_automatically(self, api_client: TestClient):
         """Responses must always contain an X-Request-ID header."""
-        response = client.get("/health")
+        response = api_client.get("/health")
         assert response.status_code == 200
         assert "x-request-id" in response.headers
         request_id = response.headers["x-request-id"]
         assert len(request_id) >= 16
 
-    def test_client_supplied_request_id_preserved(self):
+    def test_client_supplied_request_id_preserved(self, api_client: TestClient):
         """Custom valid X-Request-ID passed by client should be echoed back."""
         custom_id = "trace-client-id-abc-12345"
-        response = client.get("/health", headers={"X-Request-ID": custom_id})
+        response = api_client.get("/health", headers={"X-Request-ID": custom_id})
         assert response.status_code == 200
         assert response.headers.get("x-request-id") == custom_id
 
-    def test_sensitive_data_excluded_from_access_logs(self, caplog: pytest.LogCaptureFixture):
+    def test_sensitive_data_excluded_from_access_logs(
+        self,
+        api_client: TestClient,
+        caplog: pytest.LogCaptureFixture,
+    ):
         """Access logs must record method, path, and duration without leaking passwords or tokens."""
         import logging
 
@@ -40,7 +57,7 @@ class TestObservabilityMiddleware:
         )
 
         # Simulate authentication or sensitive post
-        response = client.post(
+        response = api_client.post(
             "/api/v1/auth/login",
             json={"email": "test@example.com", "password": secret_password},
             headers={"X-Request-ID": "audit-test-req-001"},
