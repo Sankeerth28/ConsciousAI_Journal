@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-
 from sqlmodel import Session
 
 from app.api.deps import get_db
