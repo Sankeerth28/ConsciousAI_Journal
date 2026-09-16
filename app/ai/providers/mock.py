@@ -35,16 +35,51 @@ class MockLLMProvider:
         max_tokens: int = 256,
         temperature: float = 0.7,
     ) -> str:
-        """Return a deterministic reflection response based on prompt contents."""
+        """Return a reflective response based on persona and detected emotions in prompt."""
+        lines = prompt.splitlines()
+        header = lines[0].lower() if lines else ""
         lower = prompt.lower()
-        if "coach" in lower:
+
+        # Isolate persona from header or explicit 'persona:' tag (avoid matching guidelines)
+        is_coach = "coach" in header or "action-oriented" in header or "persona: coach" in lower or ("coach" in lower and "licensed therapist" not in lower)
+        is_neutral = "neutral" in header or "factual" in header or "concise" in header or "persona: neutral" in lower
+        is_therapist = "therapist" in header or "contemplative" in header or "persona: therapist" in lower
+        is_supportive = "supportive" in header or "empathetic" in header or "persona: supportive" in lower
+
+        # Detect emotion mentioned in theme clause
+        detected_emotion = None
+        for emo in ["hopeful", "happy", "sad", "angry", "guilty", "calm", "anxious", "confused"]:
+            if f"emotion: {emo}" in lower or f"detected emotion: {emo}" in lower:
+                detected_emotion = emo
+                break
+
+        if is_coach:
+            if detected_emotion in ("hopeful", "happy"):
+                return "Building on this positive momentum shows dedication to your path. What is one concrete action you want to take next to keep progressing?"
+            if detected_emotion in ("anxious", "confused", "sad"):
+                return "Navigating competing priorities can be challenging, but recognizing your limits shows strong agency. What is one single, tangible action you can focus on first?"
             return "Taking proactive steps shows dedication to your path. What is one tangible action you want to take next?"
-        if "therapist" in lower:
-            return "It seems there are several layered emotions beneath this experience. What feels most important to acknowledge right now?"
-        if "neutral" in lower:
+
+        if is_neutral:
+            if detected_emotion:
+                return f"The entry records clear observations and notes feelings of being {detected_emotion}. What specific aspects of this experience are most relevant to consider moving forward?"
             return "The entry reflects observations on your current situation. What aspects of this remain to be considered?"
 
-        # Default supportive
+        if is_therapist:
+            if detected_emotion in ("hopeful", "calm"):
+                return "Noticing what brings you a sense of hope offers valuable insight into what nourishes you. What feelings arise when you reflect on this progress?"
+            return "It seems there are several layered emotions beneath this experience. What feels most important to acknowledge right now?"
+
+        # Default supportive persona
+        if detected_emotion == "hopeful":
+            return "Celebrating your small victories and feeling hopeful is a wonderful reminder of your resilience. What part of today's progress feels most meaningful to you?"
+        if detected_emotion in ("anxious", "confused"):
+            return "It is completely natural to feel overwhelmed when holding so many expectations at once. What would offering yourself a moment of rest and patience look like today?"
+        if detected_emotion == "happy":
+            return "Experiencing joy and fulfillment is deeply energizing. What contributed most to that uplifting feeling today?"
+        if detected_emotion == "sad":
+            return "Giving yourself space to process these tender emotions takes genuine courage. What kind of care or reassurance does your mind need right now?"
+
         return "Acknowledging these feelings is a meaningful step toward self-awareness. What part of this experience feels most significant to you?"
 
 
