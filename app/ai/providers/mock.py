@@ -44,7 +44,6 @@ class MockLLMProvider:
         is_coach = "coach" in header or "action-oriented" in header or "persona: coach" in lower or ("coach" in lower and "licensed therapist" not in lower)
         is_neutral = "neutral" in header or "factual" in header or "concise" in header or "persona: neutral" in lower
         is_therapist = "therapist" in header or "contemplative" in header or "persona: therapist" in lower
-        is_supportive = "supportive" in header or "empathetic" in header or "persona: supportive" in lower
 
         # Detect emotion mentioned in theme clause
         detected_emotion = None
