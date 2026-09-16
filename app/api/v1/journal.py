@@ -89,12 +89,16 @@ def create_journal_entry(
         top_emotion=pipeline_result.emotion.top_emotion if pipeline_result.emotion else None,
         top_value=pipeline_result.value.top_value if pipeline_result.value else None,
         detected_emotions=(
-            [e.label for e in pipeline_result.emotion.emotions]
+            [e.label for e in pipeline_result.emotion.emotions if e.score >= 0.15]
+            or (
+                [pipeline_result.emotion.top_emotion] if pipeline_result.emotion.top_emotion else []
+            )
             if pipeline_result.emotion and pipeline_result.emotion.emotions
             else []
         ),
         detected_values=(
-            [v.label for v in pipeline_result.value.values]
+            [v.label for v in pipeline_result.value.values if v.score >= 0.15]
+            or ([pipeline_result.value.top_value] if pipeline_result.value.top_value else [])
             if pipeline_result.value and pipeline_result.value.values
             else []
         ),

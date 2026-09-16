@@ -70,7 +70,7 @@ export const ReflectionCard: React.FC<ReflectionCardProps> = ({
           {detectedEmotions.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-slate-400 font-medium">Emotions:</span>
-              {detectedEmotions.map((emo, idx) => (
+              {detectedEmotions.slice(0, 3).map((emo, idx) => (
                 <span
                   key={idx}
                   className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
@@ -84,7 +84,7 @@ export const ReflectionCard: React.FC<ReflectionCardProps> = ({
           {detectedValues.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-slate-400 font-medium">Core Values:</span>
-              {detectedValues.map((val, idx) => (
+              {detectedValues.slice(0, 3).map((val, idx) => (
                 <span
                   key={idx}
                   className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"

@@ -78,7 +78,13 @@ class MockLLMProvider:
 
         if is_therapist:
             if detected_emotion in ("hopeful", "calm"):
-                return "Noticing what brings you a sense of hope offers valuable insight into what nourishes you. What feelings arise when you reflect on this progress?"
+                return "Noticing what brings you a sense of hope offers valuable insight into your emotional landscape. What feelings arise when you reflect on this progress?"
+            if detected_emotion in ("anxious", "confused"):
+                return "Holding anxiety alongside so many expectations can create complex emotions beneath the surface. What feels most important to gently acknowledge right now?"
+            if detected_emotion == "sad":
+                return "Allowing yourself to feel tender emotions without rushing to fix them takes courage. What kind of comfort feels most needed right now?"
+            if detected_emotion == "angry":
+                return "Intense frustration often signals that important emotions or boundaries are being tested. What is this reaction pointing you toward?"
             return "It seems there are several layered emotions beneath this experience. What feels most important to acknowledge right now?"
 
         # Default supportive persona
