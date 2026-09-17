@@ -2,9 +2,9 @@
 
 An AI-powered self-reflection journaling application that helps you explore your thoughts and feelings through intelligent, empathetic analysis.
 
-> **Project Status:** Milestone 9 Complete ✅  
-> Deployment, Observability, Performance & Release Readiness: Distributed atomic Redis rate limiting with bounded failover, independent liveness (`/health`) and dependency readiness (`/ready`) probes, privacy-safe observability with `X-Request-ID` correlation, non-root multi-stage Docker container (UID 10001), Docker Compose staging environment, CI/CD pipeline, and comprehensive operational deployment guides.  
-> **Final Verdict:** READY FOR STAGING
+> **Project Status:** Full-Stack Production & Staging Release Ready ✅  
+> Features distributed atomic Redis rate limiting, independent liveness (`/health`) and readiness (`/ready`) probes, non-root multi-stage Docker container with automatic Alembic migrations, complete React 19 + TypeScript + Vite modern frontend, and verified Render cloud deployment.  
+> **Verdict:** FULL-STACK READY
 
 ---
 
@@ -29,15 +29,24 @@ An AI-powered self-reflection journaling application that helps you explore your
 ## 🏗️ Architecture
 
 ```
+frontend/               React 19 + Vite + TypeScript frontend
+├── src/
+│   ├── api/            Axios API client with JWT interceptor & typed endpoints
+│   ├── components/     AppShell, Navbar, Analytics charts, ReflectionCard, UI components
+│   ├── context/        AuthContext (JWT session management) & ThemeContext
+│   └── pages/          Dashboard, NewJournal, History, Analytics, Settings, Login, Register
+├── public/             Static icons & assets
+└── package.json        Frontend dependency specification
+
 app/                    FastAPI backend
-├── api/v1/             Versioned API endpoints (health, ready)
-├── core/               Configuration (Pydantic Settings), logging
-├── models/             SQLModel database models (JournalEntry, Memory, MemoryEmbedding, Feedback, UserSettings)
+├── api/v1/             Versioned API endpoints (auth, health, ready, journal)
+├── core/               Configuration (Pydantic Settings), security middleware, logging
+├── models/             SQLModel database models (User, JournalEntry, Memory, Feedback, Settings)
 ├── schemas/            Pydantic request/response schemas
-├── repositories/       Data access repositories with soft-delete, approval, and embedding persistence
+├── repositories/       Data access repositories with user isolation & soft-delete
 ├── services/           Business logic, MemoryRetrievalService & CSV migration utilities
 ├── ai/                 AI services & provider abstraction
-│   ├── interfaces.py   Protocols (LLMProvider, EmbeddingProvider, EmotionClassifier, ValueClassifier, VectorStore)
+│   ├── interfaces.py   Protocols (LLMProvider, EmbeddingProvider, EmotionClassifier, ValueClassifier)
 │   ├── schemas.py      Pydantic structured output and vector schemas
 │   ├── safety.py       SafetyInterceptor (crisis & medical boundary protection)
 │   ├── reflection_engine.py  Persona-based reflective response engine & static fallbacks
@@ -48,12 +57,12 @@ app/                    FastAPI backend
 │       ├── mock.py           Deterministic offline mock providers & MockVectorStore
 │       ├── vector_store.py   LocalVectorStore (NumPy cosine similarity + pure math fallback)
 │       └── huggingface.py    Lazy-loaded HuggingFace pipeline providers (CPU/CUDA)
-└── database/           Engine, WAL sessions, table initialization
+└── database/           Engine, WAL sessions, connection pooling, table initialization
 
 alembic/                Database schema migrations (001_initial_schema, 002_memory_embeddings)
 data/                   Local data directory (gitignored SQLite database)
-tests/                  Pytest test suite (223 passing unit and integration tests)
-docs/                   Project documentation, legacy audit, memory architecture, and AI architecture
+tests/                  Pytest test suite (369 passing unit and integration tests)
+docs/                   Project documentation, deployment guides, security, and architectures
 scripts/                Legacy CSV migration and utility tools
 notebooks/legacy/       Preserved original notebook prototype
 ```
@@ -62,8 +71,8 @@ notebooks/legacy/       Preserved original notebook prototype
 
 ## 📋 Prerequisites
 
-- **Python 3.10–3.12**
-- **pip** (recent version)
+- **Python 3.10–3.12** & pip
+- **Node.js 18+** & npm (for running the React frontend)
 - No GPU required for development (uses mock AI provider and local SQLite)
 
 ---
@@ -134,6 +143,23 @@ curl http://localhost:8000/ready
 # API docs (auto-generated Swagger UI)
 # Open http://localhost:8000/docs in your browser
 ```
+
+### 8. Run the React Frontend (Modern UI)
+
+Open a new terminal and navigate to the `frontend/` directory:
+
+```bash
+cd frontend
+
+# Install dependencies:
+npm install
+
+# Start development server:
+npm run dev
+```
+
+The frontend application is now running at **http://localhost:5173**.  
+It connects automatically to your backend at `http://localhost:8000` via `VITE_API_BASE_URL`.
 
 ---
 
@@ -249,18 +275,45 @@ See [`docs/v2-roadmap.md`](docs/v2-roadmap.md) for the full roadmap.
 | 7. Production Authentication | ✅ Complete | Signed JWT access tokens (HS256), salted bcrypt hashing, production spoofing rejection |
 | 8. Security Hardening & Readiness | ✅ Complete | Strict config validation, rate limiting, security headers, exception sanitization |
 | 9. Deployment, Observability & Readiness | ✅ Complete | Multi-stage Docker, UID 10001, Redis rate limit & failover, /health & /ready probes, CI/CD, guides |
-| 10. Modern Frontend | 🔲 Planned | React + Vite + TypeScript dashboard & editor |
-| 11. End-to-End Release Validation | 🔲 Planned | Full integration E2E flows & final production promotion |
+| 10. Modern Frontend | ✅ Complete | React 19 + Vite + TypeScript dashboard, editor, analytics charts, and mobile-ready UI |
+| 11. End-to-End Release Validation | ✅ Complete | Full integration E2E flows, automated DB migrations, and production cloud deployment on Render |
 
 ---
 
-## ⚠️ Current Limitations & Deployment Guidelines
+## 🌐 Cloud Deployment (Render)
 
-- **Staging Readiness** — Staging containerization, database pooling, Redis rate limiting, health probes, and CI/CD pipelines are verified and complete.
-- **Production Status** — The application architecture is `READY FOR STAGING`. Production promotion requires running against managed cloud infrastructure (PostgreSQL 16, Redis 7, TLS termination, KMS/Vault secrets) and completing the release checklist in [`docs/release-checklist.md`](docs/release-checklist.md).
-- **Redis Fallback** — In-memory rate limiting gracefully handles Redis unavailability or disconnected states without failing user requests with 500. Memory is bounded to prevent resource exhaustion.
-- **Privacy Assurance** — Access logs Correlate requests via `X-Request-ID` and record latency/status while strictly omitting passwords, tokens, journal bodies, and secrets.
-- **No Frontend UI yet** — Modern React frontend will be built in the next milestone.
+ConsciousAI Journal V2 is pre-configured for seamless cloud deployment:
+
+### 1. PostgreSQL Database & Redis Cache
+- Provision a **PostgreSQL** instance on Render (copy the internal connection URL).
+- Provision a **Redis** instance on Render (copy the internal connection URL).
+
+### 2. Backend (Web Service)
+- Create a **Web Service** on Render connected to this repository.
+- **Runtime**: `Docker` (automatically uses `Dockerfile`).
+- Migrations run automatically on container boot via `alembic upgrade head`.
+- **Environment Variables**:
+  ```env
+  APP_ENV=production
+  DEBUG=false
+  JWT_SECRET_KEY=<generate-32+-char-secret>
+  DATABASE_URL=<your-render-postgres-internal-url>
+  REDIS_URL=<your-render-redis-internal-url>
+  CORS_ORIGINS=https://your-frontend-name.onrender.com
+  AI_PROVIDER=mock
+  ```
+- **Health Check Path**: `/health`
+
+### 3. Frontend (Static Site)
+- Create a **Static Site** on Render connected to this repository.
+- **Root Directory**: `frontend`
+- **Build Command**: `npm install && npm run build`
+- **Publish Directory**: `dist`
+- **Environment Variables**:
+  ```env
+  VITE_API_BASE_URL=https://your-backend-name.onrender.com
+  ```
+- **Redirects/Rewrites**: Set `Rewrite` `/*` to `/index.html` for single-page routing.
 
 ---
 
